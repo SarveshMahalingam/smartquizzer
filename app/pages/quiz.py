@@ -1,5 +1,7 @@
 import streamlit as st
 import random
+import pandas as pd
+import plotly.express as px
 
 st.set_page_config(page_title="SmartQuizzer - Live Quiz", layout="wide")
 
@@ -10,8 +12,6 @@ if not st.session_state.get("logged_in", False):
     st.switch_page("main.py")
 
 if "quiz_data" not in st.session_state or not st.session_state.quiz_data:
-    # st.warning("No quiz data found! Please generate a quiz first.")
-    # if st.button("Go to Dashboard"):
     st.switch_page("pages/home.py")
     st.stop()
 
@@ -21,6 +21,10 @@ if "quiz_submitted" not in st.session_state:
     st.session_state.quiz_submitted = False
 if "score" not in st.session_state:
     st.session_state.score = 0
+
+# 🛑 THE FIX: Create a persistent dictionary for answers that Streamlit won't delete!
+if "user_answers" not in st.session_state:
+    st.session_state.user_answers = {}
 
 quiz_data = st.session_state.quiz_data
 total_questions = len(quiz_data)
@@ -37,7 +41,8 @@ def submit_quiz():
     """Grades the entire quiz at once."""
     score = 0
     for i in range(total_questions):
-        user_answer = st.session_state.get(f"answer_{i}")
+        # 🛑 Check our persistent dictionary instead of widget keys
+        user_answer = st.session_state.user_answers.get(i)
         correct_answer = quiz_data[i].get("answer")
         if user_answer == correct_answer:
             score += 1
@@ -48,8 +53,9 @@ def submit_quiz():
 def reset_quiz_state():
     """Cleans up memory to return to the dashboard."""
     for key in list(st.session_state.keys()):
-        if key.startswith("options_") or key.startswith("answer_"):
+        if key.startswith("options_") or key.startswith("widget_"):
             del st.session_state[key]
+    st.session_state.user_answers = {} # Clear persistent answers
     st.session_state.quiz_data = None
     st.session_state.quiz_submitted = False
     st.switch_page("pages/home.py")
@@ -65,11 +71,11 @@ with st.sidebar:
     for i in range(total_questions):
         col_idx = i % 4
         
-        # Determine if answered
-        is_answered = st.session_state.get(f"answer_{i}") is not None
+        # 🛑 Update check to look at our persistent dictionary
+        is_answered = i in st.session_state.user_answers
         
-        # Build button label
-        btn_label = f"{i + 1}" if is_answered else f"{i + 1}"
+        # Build button label (Add a checkmark if answered!)
+        btn_label = f"✅ {i + 1}" if is_answered else f"{i + 1}"
             
         # Highlight the current question with the primary color
         btn_type = "primary" if i == current_idx else "secondary"
@@ -96,23 +102,65 @@ st.title("🧠 Your Smart Quiz")
 
 if st.session_state.quiz_submitted:
     # ------------------------------------------
-    # FINAL SCORE & REVIEW SCREEN
+    # FINAL SCORE & ANALYTICS SCREEN
     # ------------------------------------------
     st.balloons()
-    st.header("Quiz Completed!")
+    st.header("Quiz Completed! 🎯")
     
     final_score = st.session_state.score
     accuracy = (final_score / total_questions) * 100
     
-    col1, col2 = st.columns(2)
-    col1.metric("Final Score", f"{final_score} / {total_questions}")
-    col2.metric("Accuracy", f"{accuracy:.1f}%")
+    improvement_areas = []
     
+    for i, q in enumerate(quiz_data):
+        # 🛑 Pull user answers from the persistent dictionary
+        user_ans = st.session_state.user_answers.get(i, "No Answer")
+        if user_ans != q['answer']:
+            category = q.get('topic', q.get('type', 'General Concepts'))
+            improvement_areas.append(category)
+
+    col1, col2 = st.columns([1, 1.5]) 
+    
+    with col1:
+        st.subheader("📊 Overview")
+        st.metric("Final Score", f"{final_score} / {total_questions}")
+        st.metric("Accuracy", f"{accuracy:.1f}%")
+        
+    with col2:
+        st.subheader("🔍 Areas for Improvement")
+        if improvement_areas:
+            df_wrong = pd.DataFrame(improvement_areas, columns=['Topic'])
+            mistake_counts = df_wrong['Topic'].value_counts().reset_index()
+            mistake_counts.columns = ['Topic', 'Mistakes']
+            
+            fig = px.pie(
+                mistake_counts, 
+                values='Mistakes', 
+                names='Topic', 
+                hole=0.4, 
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10), 
+                showlegend=False,
+                paper_bgcolor="rgba(0,0,0,0)", 
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        elif final_score == total_questions:
+            st.success("Perfect Score! 🏆\n\nYou have mastered all topics in this module.")
+
     st.divider()
+    
+    # ------------------------------------------
+    # DETAILED ANSWER REVIEW
+    # ------------------------------------------
     st.subheader("📝 Review Your Answers")
     
     for i, q in enumerate(quiz_data):
-        user_ans = st.session_state.get(f"answer_{i}", "No Answer")
+        # 🛑 Pull from persistent dictionary again
+        user_ans = st.session_state.user_answers.get(i, "No Answer")
         correct_ans = q['answer']
         
         with st.expander(f"Question {i + 1}: {q['question']}"):
@@ -123,7 +171,7 @@ if st.session_state.quiz_submitted:
                 st.info(f"**Correct Answer:** {correct_ans}")
     
     st.divider()
-    # st.button("Return to Dashboard", type="primary", on_click=reset_quiz_state)
+    
     if st.button("Go to Dashboard", type="primary", on_click=reset_quiz_state):
         st.switch_page("pages/home.py")
     st.stop()
@@ -133,10 +181,7 @@ else:
     # ------------------------------------------
     question_data = quiz_data[current_idx]
     
-    # Display Question Tags
     st.caption(f"**Topic:** {question_data.get('topic', 'General')} | **Difficulty:** {question_data.get('difficulty', 'Unknown')} | **Type:** {question_data.get('type', 'Unknown')}")
-    
-    # The Question
     st.subheader(f"Q{current_idx + 1}. {question_data['question']}")
     
     # Shuffle options safely
@@ -148,17 +193,24 @@ else:
     
     options = st.session_state[session_options_key]
     
-    # Show the radio button, tying it directly to session state
-    st.radio(
+    # 🛑 THE FIX: Safely find the index of the previously selected answer (if any)
+    saved_answer = st.session_state.user_answers.get(current_idx)
+    start_index = options.index(saved_answer) if saved_answer in options else None
+    
+    # Render the radio button
+    selected_option = st.radio(
         "Select your answer:", 
         options, 
-        key=f"answer_{current_idx}", 
-        index=None if st.session_state.get(f"answer_{current_idx}") is None else options.index(st.session_state.get(f"answer_{current_idx}"))
+        index=start_index,
+        key=f"widget_{current_idx}" # Streamlit can delete this later, we don't care anymore!
     )
+    
+
+    if selected_option:
+        st.session_state.user_answers[current_idx] = selected_option
     
     st.divider()
     
-    # Previous / Next Navigation Buttons
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         if current_idx > 0:

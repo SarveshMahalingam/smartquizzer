@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import re 
 import phonenumbers
-from datetime import datetime
+import datetime
 from database import db_operations
 import datetime
 # --- State Initialization ---
@@ -87,14 +87,14 @@ if not st.session_state.logged_in:
 
             # Pass them into the date_input widget
             dob_input = st.date_input(
-                "Select a date:",
+                "Date of Birth:",
                 value="today",           # The default highlighted date
                 min_value=start_date,    # The furthest back they can scroll
                 max_value=end_date       # The furthest forward they can scroll
             )
             # dob_input = st.date_input("Select Date of Birth:")
             email_input = st.text_input("Enter Email Address")
-            phone_number = st.text_input("Enter Phone Number:", placeholder="+91 4123 345 678")
+            phone_number = st.text_input("Enter Phone Number:")
             password = st.text_input("Password", type="password")
             confirm_password = st.text_input("Confirm Password", type="password")
             
@@ -114,11 +114,13 @@ if not st.session_state.logged_in:
                 else:
                     # 2. Database Insertion
                     formatted_phone = phonenumbers.format_number(valid_phone, phonenumbers.PhoneNumberFormat.E164)
-                    dob_datetime = datetime.combine(dob_input, datetime.min.time()) 
+                    
+                    # THE FIX: Convert the date to a clean string (YYYY-MM-DD) to strip all time aspects
+                    dob_clean = str(dob_input) 
                     
                     success, msg = db_operations.create_user(
                         email=email_input, password=password, name=name, 
-                        phone=formatted_phone, dob=dob_datetime
+                        phone=formatted_phone, dob=dob_clean # Pass the clean string here
                     )
                     if success:
                         st.success(f"{msg} You can now log in.")

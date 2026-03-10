@@ -6,7 +6,7 @@ import google.generativeai as genai
 # --- GEMINI CONFIGURATION ---
 # ==========================================
 # Paste your API key here (use st.secrets in production!)
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","AIzaSyBngc6-SzFwEGoUklpDHYnLYQCjXJyZ1wM")
 
 # Configure the SDK
 genai.configure(api_key=GEMINI_API_KEY)

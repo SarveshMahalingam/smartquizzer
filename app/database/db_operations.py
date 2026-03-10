@@ -6,7 +6,7 @@ from datetime import datetime
 # --- Database Connection ---
 # For local testing, you can use a local MongoDB URI. 
 # For production, use Streamlit secrets: st.secrets["MONGO_URI"]
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://sarveshmahalingam2004_db_user:ixOHvjgz8psOWPTp@smartquizzer-db.c2yk85r.mongodb.net/?appName=smartquizzer-db")
 client = MongoClient(MONGO_URI)
 db = client["SmartQuizzerDB"]
 

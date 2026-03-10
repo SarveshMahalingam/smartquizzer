@@ -5,13 +5,13 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # 3. FORCE INSTALL DEPENDENCIES (Added werkzeug)
-RUN pip install --no-cache-dir streamlit google-generativeai bs4 pdfminer requests pandas phonenumbers werkzeug pymongo
+RUN pip install --no-cache-dir streamlit google-generativeai bs4 pdfminer.six requests pandas phonenumbers werkzeug pymongo plotly
 
 # 4. Copy the rest of your app's code into the container
 COPY . .
 
 # 5. Expose the port Streamlit uses
-EXPOSE 8501
+EXPOSE 8502
 
 # 6. The bulletproof command to run your app
-CMD ["python", "-m", "streamlit", "run", "app/main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["python", "-m", "streamlit", "run", "app/main.py", "--server.port=8502", "--server.address=0.0.0.0"]
