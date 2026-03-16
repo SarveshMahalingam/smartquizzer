@@ -5,13 +5,13 @@ import google.generativeai as genai
 # ==========================================
 # --- GEMINI CONFIGURATION ---
 # ==========================================
-# Paste your API key here (use st.secrets in production!)
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","AIzaSyBngc6-SzFwEGoUklpDHYnLYQCjXJyZ1wM")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","")
 
 # Configure the SDK
 genai.configure(api_key=GEMINI_API_KEY)
 
-# We use gemini-1.5-flash because it is incredibly fast and part of the free tier
+# We use gemini-2.5-flash because it is incredibly fast and part of the free tier
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ==========================================

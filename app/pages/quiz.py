@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import pandas as pd
 import plotly.express as px
+from database import db_operations
 
 st.set_page_config(page_title="SmartQuizzer - Live Quiz", layout="wide")
 
@@ -119,6 +120,26 @@ if st.session_state.quiz_submitted:
             category = q.get('topic', q.get('type', 'General Concepts'))
             improvement_areas.append(category)
 
+    if "results_saved" not in st.session_state:
+        user_email = st.session_state.user_data.get("email")
+        
+        # Show us the email to make sure you are actually logged in!
+        st.info(f"Attempting to save results for: {user_email}")
+        
+        from database import db_operations
+        success, error_msg = db_operations.save_quiz_result(
+            email=user_email,
+            score=final_score,
+            total_questions=total_questions,
+            improvement_areas=improvement_areas
+        )
+        
+        if success:
+            st.toast("✅ Quiz results successfully saved to MongoDB!")
+            st.session_state.results_saved = True
+        else:
+            # 🚨 THIS WILL REVEAL THE BUG 🚨
+            st.error(f"DATABASE ERROR: {error_msg}")
     col1, col2 = st.columns([1, 1.5]) 
     
     with col1:
@@ -150,7 +171,7 @@ if st.session_state.quiz_submitted:
             st.plotly_chart(fig, use_container_width=True)
         elif final_score == total_questions:
             st.success("Perfect Score! 🏆\n\nYou have mastered all topics in this module.")
-
+    
     st.divider()
     
     # ------------------------------------------
@@ -220,3 +241,18 @@ else:
             st.button("Next ➡️", on_click=jump_to_question, args=(current_idx + 1,), type="primary", use_container_width=True)
         else:
             st.button("✅ Submit Quiz", type="primary", on_click=submit_quiz, use_container_width=True)
+
+def reset_quiz_state():
+    """Update your reset function to clear the save lock!"""
+    for key in list(st.session_state.keys()):
+        if key.startswith("options_") or key.startswith("widget_"):
+            del st.session_state[key]
+    st.session_state.user_answers = {} 
+    st.session_state.quiz_data = None
+    st.session_state.quiz_submitted = False
+    
+    # Unlock the save feature for the NEXT quiz
+    if "results_saved" in st.session_state:
+        del st.session_state["results_saved"]
+        
+    st.switch_page("pages/home.py")
