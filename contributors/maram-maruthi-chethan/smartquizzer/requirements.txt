@@ -1,0 +1,13 @@
+streamlit
+google-generativeai
+bs4
+pdfminer
+requests
+os
+random
+datetime
+pandas 
+re
+phonenumbers
+requests
+json
